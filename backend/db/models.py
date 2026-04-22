@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from datetime import datetime
 from sqlalchemy import DateTime, JSON
-from sqlalchemy.orm import Mapped, relationship, UniqueConstraint
+from sqlalchemy.orm import relationship, UniqueConstraint
 from .database import Base
 
 class User(Base):
@@ -9,6 +9,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     display_name = Column(String)
     avatar_url = Column(String, nullable=True)
