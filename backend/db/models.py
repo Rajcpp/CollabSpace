@@ -1,8 +1,9 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from datetime import datetime
 from sqlalchemy import DateTime, JSON
-from sqlalchemy.orm import relationship, UniqueConstraint
-from .database import Base
+from sqlalchemy.orm import relationship
+from sqlalchemy import UniqueConstraint
+from backend.db.database import Base
 
 class User(Base):
     __tablename__ = "users"
