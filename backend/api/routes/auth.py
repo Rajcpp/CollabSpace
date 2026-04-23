@@ -1,3 +1,4 @@
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import APIRouter, HTTPException, Depends
 from backend.db.models import User
 from backend.db.database import SessionLocal
@@ -18,14 +19,14 @@ def register(username: str, email: str, password: str, db = Depends(get_db)):
     db.refresh(new_user)
     return {"message": "User registered successfully"}
 
+
 @router.post("/login")
-def login(username: str, password: str, db = Depends(get_db)):
-    """Authenticate a user and return a JWT token."""
-    user = db.query(User).filter(User.username == username).first()
-    if not user or not verify_password(password, user.hashed_password):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"user_id": user.id})
-    return {"access_token": token}
+    return {"access_token": token, "token_type": "bearer"}
 
 @router.get("/me")
 def read_current_user(current_user: User = Depends(get_current_user)):
