@@ -96,3 +96,13 @@ def join_project(db, project_code: str, user_id: int):
     db.commit()
     db.refresh(new_member)
     return {"project": project, "role": new_member.role, "joined_at": new_member.joined_at}
+
+def get_member_or_403(db, project_id, user_id):
+    """Get project member or raise 403 if not a member."""
+    member = db.query(ProjectMembers).filter(
+        ProjectMembers.project_id == project_id,
+        ProjectMembers.user_id == user_id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this project")
+    return member
