@@ -43,7 +43,10 @@ def list_members(project_id: int, current_user: User = Depends(get_current_user)
     """List all members of a project."""
     get_member_or_403(db, project_id, current_user.id)  # Ensure user is a member
     members = db.query(ProjectMembers, User).join(User, ProjectMembers.user_id == User.id).filter(ProjectMembers.project_id == project_id).all()
-    return members
+    return [
+        {"member_id": m.id, "role": m.role, "user": u} 
+        for m, u in members
+    ]
 
 @router.put("/{project_id}/members/{member_id}/role")
 def change_member_role(project_id: int, member_id: int, new_role: str, current_user: User = Depends(get_current_user), db = Depends(get_db)):
@@ -54,9 +57,9 @@ def change_member_role(project_id: int, member_id: int, new_role: str, current_u
     if requester.role not in ["owner", "admin"]:
         raise HTTPException(status_code=403, detail="Only owners and admins can change roles")
     # Prevent owner from demoting themselves
+    membership = get_member_or_403(db, project_id, member_id)  # Ensure target member exists
     if membership.user_id == current_user.id and membership.role == "owner" and new_role != "owner":
         raise HTTPException(status_code=400, detail="Owner cannot demote themselves")
-    membership = get_member_or_403(db, project_id, member_id)  # Ensure target member exists
     if membership.role == "owner" and requester.role != "owner":
         raise HTTPException(status_code=403, detail="Only owners can change the role of another owner")
     

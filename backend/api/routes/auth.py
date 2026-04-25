@@ -8,7 +8,7 @@ from backend.schemas.user import UserCreate, AuthResponse, UserResponse, UserBri
 
 router = APIRouter()
 
-@router.post("/register")
+@router.post("/register",response_model=AuthResponse)
 def register(user_data: UserCreate, db = Depends(get_db)):
     """Register a new user."""
     if db.query(User).filter(User.username == user_data.username).first():
@@ -18,7 +18,8 @@ def register(user_data: UserCreate, db = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": "User registered successfully"}
+    token = create_access_token({"user_id": new_user.id})
+    return AuthResponse(access_token=token, user=new_user)
 
 
 @router.post("/login", response_model=AuthResponse)
