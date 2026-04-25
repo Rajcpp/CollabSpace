@@ -3,24 +3,26 @@ from backend.db.models import User, Projects, ProjectMembers, Tasks
 from backend.db.database import SessionLocal
 from backend.api.deps import get_current_user, get_db
 from backend.crud.project import generate_project, get_user_projects, get_project_by_id, join_project, get_member_or_403
+from backend.schemas.project import ProjectCreate, ProjectResponse, MemberResponse
+from typing import List
 
 router = APIRouter()
 
-@router.post("/")
-def create_project(name: str, description: str, access_type: str, current_user: User = Depends(get_current_user), db = Depends(get_db)):
+@router.post("/", response_model=ProjectResponse)
+def create_project(project_data: ProjectCreate, current_user: User = Depends(get_current_user), db = Depends(get_db)):
     """Create a new project."""
-    if access_type not in ["public", "private"]:
+    if project_data.access_type not in ["public", "private"]:
         raise HTTPException(status_code=400, detail="Invalid access type")
-    project = generate_project(name, description, access_type, current_user.id, db)
-    return {"project_id": project.id, "project_code": project.project_code}
+    project = generate_project(project_data.name, project_data.description, project_data.access_type, current_user.id, db)
+    return project
 
-@router.get("/")
+@router.get("/", response_model=List[ProjectResponse])
 def list_projects(current_user: User = Depends(get_current_user), db = Depends(get_db)):
     """List all projects owned by the current user."""
     projects = get_user_projects(current_user.id, db)
-    return [{"id": p.id, "name": p.name, "project_code": p.project_code} for p in projects]
+    return projects
 
-@router.get("/{project_id}")
+@router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(project_id: int, current_user: User = Depends(get_current_user), db = Depends(get_db)):
     """Get project details by ID."""
     project = get_project_by_id(project_id, db)
@@ -30,18 +32,18 @@ def get_project(project_id: int, current_user: User = Depends(get_current_user),
     membership = db.query(ProjectMembers).filter(ProjectMembers.project_id == project_id, ProjectMembers.user_id == current_user.id).first()
     if not membership:
         raise HTTPException(status_code=403, detail="Not a member of this project")
-    return {"id": project.id, "name": project.name, "description": project.description, "project_code": project.project_code}
+    return project
 
 @router.post("/join")
 def join(project_code: str, current_user: User = Depends(get_current_user), db = Depends(get_db)):
     return join_project(db, project_code, current_user.id)
 
-@router.get("/{project_id}/members")
+@router.get("/{project_id}/members",response_model=List[MemberResponse])
 def list_members(project_id: int, current_user: User = Depends(get_current_user), db = Depends(get_db)):
     """List all members of a project."""
     get_member_or_403(db, project_id, current_user.id)  # Ensure user is a member
     members = db.query(ProjectMembers, User).join(User, ProjectMembers.user_id == User.id).filter(ProjectMembers.project_id == project_id).all()
-    return [{"member_id": m.id, "role": m.role, "user": {"id": u.id, "username": u.username, "display_name": u.display_name}} for m, u in members]
+    return members
 
 @router.put("/{project_id}/members/{member_id}/role")
 def change_member_role(project_id: int, member_id: int, new_role: str, current_user: User = Depends(get_current_user), db = Depends(get_db)):
